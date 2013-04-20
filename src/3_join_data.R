@@ -1,23 +1,9 @@
 library(ProjectTemplate)
 load.project()
 
-data.reviews.biz <- join(data.reviews[,
-    c("review_id", "votes.useful", "stars", "date", "business_id", "user_id")],
-  data.biz[,
-    c("business_id", "open", "biz.review_count", "longitude", "latitude",
-      "biz.stars")])
-
-data.rbu <- join(data.reviews.biz,
-  data.users[,c("user_id", "average_stars", "user_review_count")])
-
-### Select train ids
-
-data.rbu.1 <- join(data.rbu[data.rbu$review_id %in% test.ids,] , features.tf)
-data.rbu.2 <- join(data.rbu.1 , features.tf.idf)
-
-formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu.2),
- c("review_id", "votes.useful", "date", "business_id", "user_id")), 
-  collapse = "+")))
+# =============================
+# = Wrapper for model fitting =
+# =============================
 
 fit.gbm.wrap <- function(formula, data, int.depth.par, n.min.par, n.par,
   shrinkage.par, cv.folds, save.it = TRUE) {
@@ -44,7 +30,40 @@ fit.gbm.wrap <- function(formula, data, int.depth.par, n.min.par, n.par,
   out
 }
 
+# =============
+# = Join data =
+# =============
+
+data.reviews.biz <- join(data.reviews[,
+    c("review_id", "votes.useful", "stars", "date", "business_id", "user_id")],
+  data.biz[,
+    c("business_id", "open", "biz.review_count", "longitude", "latitude",
+      "biz.stars")])
+
+data.rbu <- join(data.reviews.biz,
+  data.users[,c("user_id", "average_stars", "user_review_count")])
+
+### Select train ids
+
+data.rbu.1 <- join(data.rbu[data.rbu$review_id %in% train.ids,] , features.tf)
+data.rbu.2 <- join(data.rbu.1 , features.tf.idf)
+
+# =================
+# = Model fitting =
+# =================
+
+formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu.2),
+ c("review_id", "votes.useful", "date", "business_id", "user_id")), 
+  collapse = "+")))
+
 parameter.grid <- expand.grid(int.depth.par = 3:8, n.min.par = c(5,10,15),
   n.par = 10000, cv.folds = 10, shrinkage.par = c(0.1, 0.01))
 
-mc
+results <- mclapply(1:nrow(parameter.grid), function(row.x){
+    fit.gbm.wrap(formu, data.rbu.2,
+      int.depth.par = parameter.grid[row.x, "int.depth.par"],
+      n.min.par = parameter.grid[row.x, "n.min.par"],
+      n.par = parameter.grid[row.x, "n.par"],
+      shrinkage.par = parameter.grid[row.x, "shrinkage.par"],
+      cv.folds = parameter.grid[row.x, "cv.folds"])
+  })

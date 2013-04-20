@@ -7,6 +7,7 @@ load.project()
 # library(Rstem)
 
 
+
 # ==================================
 # = Create split for local testing =
 # ==================================
@@ -28,26 +29,26 @@ data.rb <- join(data.reviews, data.biz[,c("business_id",
 data.rb$text.aug <- gsub("_@_", " ", 
   paste(data.rb$text, data.rb$tags, data.rb$name))
 
-for(k in 1:nrow(data.rb)){
-  if(k %% 1000 == 0) print(k)
-  if(data.rb[k,"review_id"] %in% train.ids){
-    path.x <- paste("data/mallet/texts_train/", data.rb[k,"review_id"], 
-     ".txt", sep = "")
-    } else {
-    path.x <- paste("data/mallet/texts_test/", data.rb[k,"review_id"], 
-     ".txt", sep = "")
-    }
-  write.table(file = path.x,
-    data.rb[k,"text.aug"], quote = FALSE, row.names = FALSE,
-    col.names = FALSE)
-}
+# for(k in 1:nrow(data.rb)){
+#   if(k %% 1000 == 0) print(k)
+#   if(data.rb[k,"review_id"] %in% train.ids){
+#     path.x <- paste("data/mallet/texts_train/", data.rb[k,"review_id"], 
+#      ".txt", sep = "")
+#     } else {
+#     path.x <- paste("data/mallet/texts_test/", data.rb[k,"review_id"], 
+#      ".txt", sep = "")
+#     }
+#   write.table(file = path.x,
+#     data.rb[k,"text.aug"], quote = FALSE, row.names = FALSE,
+#     col.names = FALSE)
+# }
 
 
 # ==============
 # = Run mallet =
 # ==============
 
-no.topics <- 250
+no.topics <- 300
 mallet.call.fit <- paste("sh src/run_mallet_fit.sh", no.topics)
 system(mallet.call.fit)
 
