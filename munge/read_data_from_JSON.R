@@ -116,7 +116,11 @@ data.biz$city <- iconv(data.biz$city, "latin1", "UTF-8")
 data.biz$name <- iconv(data.biz$name, "latin1", "UTF-8")
 data.biz$stars <- as.numeric(as.character(data.biz$stars))
 data.biz$review_count <- as.numeric(as.character(data.biz$review_count))
+data.biz$longitude <- as.numeric(as.character(data.biz$longitude))
+data.biz$latitude <- as.numeric(as.character(data.biz$latitude))
 names(data.biz)[names(data.biz) == "stars"] <- "biz.stars"
+names(data.biz)[names(data.biz) == "review_count"] <- "biz.review_count"
+
 cache("data.biz")
 
 

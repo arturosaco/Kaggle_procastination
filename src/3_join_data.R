@@ -19,9 +19,9 @@ formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu.2),
  c("review_id", "votes.useful", "date", "business_id", "user_id")), 
   collapse = "+")))
 
-function(formula, data, int.depth.par, n.min.par, n.par,
+fit.gbm.wrap <- function(formula, data, int.depth.par, n.min.par, n.par,
   shrinkage.par, cv.folds, save.it = TRUE) {
-  
+
   # int.depth.par <- 4
   # n.min.par <- 10
   # n.par <- 10
@@ -41,4 +41,10 @@ function(formula, data, int.depth.par, n.min.par, n.par,
       ".RData", sep = "")
     save(out, file = path.x)
   }
+  out
 }
+
+parameter.grid <- expand.grid(int.depth.par = 3:8, n.min.par = c(5,10,15),
+  n.par = 10000, cv.folds = 10, shrinkage.par = c(0.1, 0.01))
+
+mc
