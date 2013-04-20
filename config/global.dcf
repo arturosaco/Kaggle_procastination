@@ -1,0 +1,9 @@
+data_loading: off
+cache_loading: on
+munging: off
+logging: off
+load_libraries: on
+libraries: reshape2, plyr, ggplot2, stringr, lubridate, tm, RJSONIO
+as_factors: on
+data_tables: off
+
