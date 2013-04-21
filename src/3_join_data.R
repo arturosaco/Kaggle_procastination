@@ -76,4 +76,26 @@ results <- mclapply(1:nrow(parameter.grid), function(row.x){
       n.par = parameter.grid[row.x, "n.par"],
       shrinkage.par = parameter.grid[row.x, "shrinkage.par"],
       cv.folds = parameter.grid[row.x, "cv.folds"])
-  })
+  }, mcores = "Fill this")
+
+# ==========
+# = glmnet =
+# ==========
+
+formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu),
+ c("review_id", "votes.useful", "date", "business_id", "user_id")), 
+  collapse = "+")))
+
+x.mat <- model.matrix(object = formu, data = data.rbu, 
+  na.action = "na.pass")
+x.mat[is.na(x.mat[,"user_review_count"]), "user_review_count"] <- 0
+x.mat[is.na(x.mat[,"average_stars"]), "average_stars"] <- 
+  median(x.mat[,"average_stars"], na.rm = TRUE)
+mod.cv <- cv.glmnet(x = x.mat, y = data.rbu$votes.useful, family = "poisson",
+  alpha = 0.75, nfolds = 10)
+mod <- glmnet(x = x.mat, y = data.rbu$votes.useful, family = "poisson",
+  alpha = 0.75, lambda = mod.cv$lambda.1se)
+
+median.fit <- median(data.rbu$average_stars, na.rm = T)
+cache("median.fit")
+
