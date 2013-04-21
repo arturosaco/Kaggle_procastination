@@ -1,13 +1,6 @@
 library(ProjectTemplate)
 load.project()
 
-# library(openNLP)
-# library(openNLPmodels.en)
-# library(mallet)
-# library(Rstem)
-
-
-
 # ==================================
 # = Create split for local testing =
 # ==================================
@@ -60,21 +53,8 @@ system(mallet.call.test)
 # = Read mallet data =
 # ====================
 
-topic.weights <- as.matrix(read.table("data/output_mallet/infer-topic.weights.250.txt"))
 
-topic.weights <- do.call(rbind, lapply(1:nrow(topic.weights), function(x){
-  aux <- topic.weights[x, ]
-  cbind(aux[2], aux[-(1:2)][3:(length(aux)-2) %% 2 == 1],
-    aux[-(1:2)][3:(length(aux)-2) %% 2 == 0])
-}))
-topic.weights[,1] <- gsub("./data/mallet/texts_test/|\\.txt", "", topic.weights[,1])
-topic.weights <- data.frame(topic.weights, row.names = NULL)
-names(topic.weights) <- c("review_id", "topic", "weight")
-topic.weights$topic <- as.integer(as.character(topic.weights$topic))
-topic.weights$weight <- as.numeric(as.character(topic.weights$weight))
-
-
-con <- file("data/output_mallet/topic-keys.250.txt") 
+con <- file("data/output_mallet/topic-keys.300.txt") 
 open(con)
 results.list <- list();
 current.line <- 1
@@ -91,16 +71,53 @@ alphas <- ldply(results.list, function(x){
 alphas$topic <- as.integer(round(alphas$topic))
 alphas$alpha <- as.numeric(as.character(alphas$alpha))
 
-topic.weights.1 <- join(topic.weights, alphas)
-topic.weights.1$tf.idf <- topic.weights.1$weight * -log(topic.weights.1$alpha)
+topic.weights <- as.matrix(read.table("data/output_mallet/doc-topics.300.txt"))
 
-features.tf <- dcast(topic.weights.1, review_id ~ topic, value.var = "weight")
-gc()
-features.tf.idf <- dcast(topic.weights.1, review_id ~ topic, value.var = "tf.idf")
 
-names(features.tf)[-1] <- paste("tf", names(features.tf)[-1], sep = ".")
-names(features.tf.idf)[-1] <- paste("tf.idf", names(features.tf.idf)[-1], 
-  sep = ".")
+munge.tw <- function(dat, row.index){
+  dat <- do.call(rbind, lapply(row.index, function(x){
+    aux <- dat[x, ]
+    cbind(aux[2], aux[-(1:2)][3:(length(aux)-2) %% 2 == 1],
+      aux[-(1:2)][3:(length(aux)-2) %% 2 == 0])
+  }))
+
+  dat[,1] <- as.character(gsub(".*texts_train/|\\.txt", "", dat[,1]))
+  dat <- data.frame(dat, row.names = NULL)
+  names(dat) <- c("review_id", "topic", "weight")
+  dat$topic <- as.integer(as.character(dat$topic))
+  dat$weight <- as.numeric(as.character(dat$weight))
+
+  dat <- join(dat, alphas, by = "topic")
+  dat$tf.idf <- dat$weight * -log(dat$alpha)
+
+  features.tf <- dcast(dat, 
+    review_id ~ topic, value.var = "weight")
+  features.tf.idf <- dcast(dat,
+    review_id ~ topic, value.var = "tf.idf")
+  names(features.tf)[-1] <- paste("tf", names(features.tf)[-1], sep = ".")
+  names(features.tf.idf)[-1] <- paste("tf.idf", names(features.tf.idf)[-1], 
+    sep = ".")
+  list(features.tf, features.tf.idf)
+}
+
+
+indices <- list()
+for(k in 1:183){
+  indices[[k]] <- ((k - 1) * 1000 + 1):(k * 1000)
+}
+indices[[length(indices) + 1]] <- 183001:nrow(topic.weights)
+
+system.time({
+out <- mclapply(indices, function(index.sub){
+  #print(range(index.sub))
+  munge.tw(topic.weights, index.sub)
+}, mc.cores = 2)
+})
+
+features.tf <- do.call(rbind, lapply(out, function(x) x[[1]] ))
+features.tf.idf <- do.call(rbind, lapply(out, function(x) x[[2]] ))
+features.tf$review_id <- as.character(features.tf$review_id)
+features.tf.idf$review_id <- as.character(features.tf.idf$review_id)
 
 cache("features.tf")
 cache("features.tf.idf")

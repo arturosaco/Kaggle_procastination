@@ -8,13 +8,18 @@ load.project()
 fit.gbm.wrap <- function(formula, data, int.depth.par, n.min.par, n.par,
   shrinkage.par, cv.folds, save.it = TRUE) {
 
-  # int.depth.par <- 4
-  # n.min.par <- 10
-  # n.par <- 10
-  # shrinkage.par <- 0.01
-  # cv.folds <- 10
+  int.depth.par <- 4
+  n.min.par <- 10
+  n.par <- 10
+  shrinkage.par <- 0.01
+  cv.folds <- 10
+  data <- data.rbu
+  formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu),
+    c("review_id", "votes.useful", "date", "business_id", "user_id")), 
+    collapse = "+")))
 
-  mod <- gbm(formula = formu, data = data.rbu.2,
+
+  mod <- gbm(formula = formu, data = data,
     distribution = "poisson", interaction.depth = int.depth.par,
     n.trees = n.par, shrinkage = shrinkage.par,
     n.minobsinnode = n.min.par, cv.folds = cv.folds)
@@ -34,7 +39,7 @@ fit.gbm.wrap <- function(formula, data, int.depth.par, n.min.par, n.par,
 # = Join data =
 # =============
 
-data.reviews.biz <- join(data.reviews[,
+data.reviews.biz <- join(data.reviews[data.reviews$review_id %in% train.ids,
     c("review_id", "votes.useful", "stars", "date", "business_id", "user_id")],
   data.biz[,
     c("business_id", "open", "biz.review_count", "longitude", "latitude",
@@ -45,22 +50,27 @@ data.rbu <- join(data.reviews.biz,
 
 ### Select train ids
 
-data.rbu.1 <- join(data.rbu[data.rbu$review_id %in% train.ids,] , features.tf)
-data.rbu.2 <- join(data.rbu.1 , features.tf.idf)
-
+data.rbu <- join(data.rbu, features.tf)
+data.rbu <- join(data.rbu , features.tf.idf)
+rm(data.reviews, data.users, data.biz, data.reviews.biz, data.reviews.test,
+  data.users.test, features.tf, features.tf.idf)
+gc()
 # =================
 # = Model fitting =
 # =================
 
-formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu.2),
+formu <- as.formula(paste("votes.useful~0+", paste(setdiff(names(data.rbu),
  c("review_id", "votes.useful", "date", "business_id", "user_id")), 
   collapse = "+")))
 
-parameter.grid <- expand.grid(int.depth.par = 3:8, n.min.par = c(5,10,15),
+# parameter.grid <- expand.grid(int.depth.par = 3:8, n.min.par = c(5,10,15),
+#   n.par = 10000, cv.folds = 10, shrinkage.par = c(0.1, 0.01))
+
+parameter.grid <- expand.grid(int.depth.par = 3:6, n.min.par = c(5,10,15),
   n.par = 10000, cv.folds = 10, shrinkage.par = c(0.1, 0.01))
 
 results <- mclapply(1:nrow(parameter.grid), function(row.x){
-    fit.gbm.wrap(formu, data.rbu.2,
+    fit.gbm.wrap(formu, data.rbu,
       int.depth.par = parameter.grid[row.x, "int.depth.par"],
       n.min.par = parameter.grid[row.x, "n.min.par"],
       n.par = parameter.grid[row.x, "n.par"],
